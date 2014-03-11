@@ -110,14 +110,16 @@ bool CollisionDetection(void)
 					|| wormHeadPosition.Y <= 0
 					|| wormHeadPosition.Y >= rows - 1;
 
-	if(outOfBounds)
+	int xPos , yPos;
+	for(int i = 0; i < nrOfBites; i++)
 	{
-		wormHeadPosition.X = cols/2;
-		wormHeadPosition.Y = rows/2;
-		return true;
+		xPos = wormPositions[i].X;
+		yPos = wormPositions[i].Y;
+		if(wormHeadPosition.X == xPos && wormHeadPosition.Y == yPos)
+			outOfBounds = true;
 	}
 
-	return false;
+	return outOfBounds;
 }
 
 bool FoodDetection(void)
@@ -143,7 +145,6 @@ void PutWormInActiveBuffer()
 		yPos = (wormPositions[i].Y * cols);
 		activeBoard[yPos + xPos].Char.UnicodeChar = '.';
 	}
-
 }
 
 void PutFoodInActiveBuffer()
@@ -182,20 +183,28 @@ bool MoveInDirection(Direction direction)
 	return true;
 }
 
-Direction GetDirection(int keyChar, Direction defaultValue)
+Direction GetDirection(int keyChar, Direction currentValue)
 {
 	switch(keyChar)
 	{
 		case 72:
+//			if(currentValue == Down)
+	//			return currentValue;
 			return Up;
 		case 77:
+//			if(currentValue == Left)
+	//			return currentValue;
 			return Right;
 		case 80:
+//			if(currentValue == Up)
+	//			return currentValue;
 			return Down;
 		case 75:
+//			if(currentValue == Right)
+	//			return currentValue;
 			return Left;
 		default:
-			return defaultValue;
+			return currentValue;
 	}
 }
 
