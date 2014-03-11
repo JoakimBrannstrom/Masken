@@ -1,0 +1,27 @@
+
+1. Figure out screen dimensions
+2. Create board
+3. Create worm
+4. Get initial direction
+
+While(NotHitWall && NotHitTail)
+{
+	MoveInDirection();
+	if(GotFood)
+	{
+		GrowTail
+	}
+
+	if(NewDirection)
+	{
+		SetDirection
+	}
+}
+
+MoveInDirection()
+{
+	put gameBoard in buffer
+	move worm one step in direction
+	put worm in buffer
+	print buffer
+}
