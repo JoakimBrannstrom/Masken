@@ -116,7 +116,7 @@ void PutWormInActiveBuffer()
 	activeBoard[yPos + xPos].Char.UnicodeChar = '@';
 }
 
-void MoveInDirection(Direction direction)
+bool MoveInDirection(Direction direction)
 {
 	// put gameBoard in buffer
 	CopyBoard(emptyBoard, activeBoard);
@@ -125,7 +125,7 @@ void MoveInDirection(Direction direction)
 	SetWormPosition(direction);
 	if(CollisionDetection())
 	{
-		int test = 1;
+		return false;
 	}
 
 	// put worm in buffer
@@ -135,6 +135,8 @@ void MoveInDirection(Direction direction)
 	WriteFrame(activeBoard);
 	BOOL result = SetConsoleActiveScreenBuffer(FrontBuffer);
 	SwitchBuffers();
+
+	return true;
 }
 
 Direction GetDirection(int keyChar, Direction defaultValue)
@@ -156,11 +158,6 @@ Direction GetDirection(int keyChar, Direction defaultValue)
 
 void GameOn()
 {
-	//char* gameBoard = new char[rows * cols];
-
-    // CHAR_INFO gameBoard[2000]; // [20][80]; 
-    emptyBoard = new CHAR_INFO[rows * cols];
-    activeBoard = new CHAR_INFO[rows * cols];
 	CreateBoard(emptyBoard);
 
 	wormPosition.X = cols/2;
@@ -178,13 +175,52 @@ void GameOn()
 			d = GetDirection(keyChar, d);
 		}
 
-		MoveInDirection(d);
+		if(!MoveInDirection(d))
+		{
+			break;
+		}
 		
 		Sleep(100);
 	}
+}
 
-	delete [] emptyBoard;
-	delete [] activeBoard;
+void WriteTextMessageToBuffer(std::wstring message, int yOffset)
+{
+	int messageLength = message.length();
+	int yPos = rows/2 - yOffset;
+	int xPos = cols/2 - messageLength/2;
+	int offset = (yPos*cols) + xPos;
+	const wchar_t *p = message.c_str();
+	for(int i = 0; i < messageLength; i++)
+		activeBoard[offset + i].Char.UnicodeChar = WCHAR(p[i]);
+}
+
+bool GameOver(void)
+{
+	CopyBoard(emptyBoard, activeBoard);
+
+	WriteTextMessageToBuffer(std::wstring(L"GAME OVER"), 2);
+	WriteTextMessageToBuffer(std::wstring(L"Play again? (y/n)"), 0);
+
+	WriteFrame(activeBoard);
+	BOOL result = SetConsoleActiveScreenBuffer(FrontBuffer);
+
+	// WriteFrame(activeBoard);
+	// SwitchBuffers();
+
+
+	while(1)
+	{
+		if(_kbhit())
+		{
+			int ch = _getch();
+			if(ch == 'y')
+				return true;
+			if(ch == 'n')
+				return false;
+		}
+		Sleep(100);
+	}
 }
 
 void main(void)
@@ -203,8 +239,20 @@ void main(void)
 	rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 	cols = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 
-	GameOn();
+	bool replay = true;
+	while(replay)
+	{
+		//char* gameBoard = new char[rows * cols];
 
-	printf("\n\tPress any key to exit...\n");
-	int ch = _getch();
+		// CHAR_INFO gameBoard[2000]; // [20][80]; 
+		emptyBoard = new CHAR_INFO[rows * cols];
+		activeBoard = new CHAR_INFO[rows * cols];
+
+		GameOn();
+
+		replay = GameOver();
+
+		delete [] emptyBoard;
+		delete [] activeBoard;
+	}
 }
