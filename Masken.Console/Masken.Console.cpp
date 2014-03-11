@@ -18,8 +18,9 @@ BOOL bUsePause;
 HANDLE FrontBuffer, BackBuffer;
 PCHAR_INFO emptyBoard, activeBoard;
 short rows, cols;
-COORD wormPosition;
 COORD foodPosition;
+COORD wormHeadPosition;
+COORD *wormPositions;
 int nrOfBites;
 
 void CreateBoard(PCHAR_INFO board)
@@ -82,29 +83,37 @@ void SwitchBuffers(void)
 
 enum Direction { None, Up, Right, Down, Left };
 
-void SetWormPosition(Direction direction)
+void SetWormHeadPosition(Direction direction)
 {
+	for(int i = nrOfBites; i > 0; i--)
+	{
+		wormPositions[i].X = wormPositions[i-1].X;
+		wormPositions[i].Y = wormPositions[i-1].Y;
+	}
+	wormPositions[0].X = wormHeadPosition.X;
+	wormPositions[0].Y = wormHeadPosition.Y;
+
 	if(direction == Right)
-		wormPosition.X++;
+		wormHeadPosition.X++;
 	if(direction == Left)
-		wormPosition.X--;
+		wormHeadPosition.X--;
 	if(direction == Down)
-		wormPosition.Y++;
+		wormHeadPosition.Y++;
 	if(direction == Up)
-		wormPosition.Y--;
+		wormHeadPosition.Y--;
 }
 
 bool CollisionDetection(void)
 {
-	bool outOfBounds = wormPosition.X <= 0 
-					|| wormPosition.X >= cols -1
-					|| wormPosition.Y <= 0
-					|| wormPosition.Y >= rows - 1;
+	bool outOfBounds = wormHeadPosition.X <= 0 
+					|| wormHeadPosition.X >= cols -1
+					|| wormHeadPosition.Y <= 0
+					|| wormHeadPosition.Y >= rows - 1;
 
 	if(outOfBounds)
 	{
-		wormPosition.X = cols/2;
-		wormPosition.Y = rows/2;
+		wormHeadPosition.X = cols/2;
+		wormHeadPosition.Y = rows/2;
 		return true;
 	}
 
@@ -113,7 +122,7 @@ bool CollisionDetection(void)
 
 bool FoodDetection(void)
 {
-	return (wormPosition.X == foodPosition.X && wormPosition.Y == foodPosition.Y);
+	return (wormHeadPosition.X == foodPosition.X && wormHeadPosition.Y == foodPosition.Y);
 }
 
 void GenerateFoodPosition(void)
@@ -124,9 +133,17 @@ void GenerateFoodPosition(void)
 
 void PutWormInActiveBuffer()
 {
-	int yPos = (wormPosition.Y * cols);
-	int xPos = wormPosition.X;
+	int xPos = wormHeadPosition.X;
+	int yPos = (wormHeadPosition.Y * cols);
 	activeBoard[yPos + xPos].Char.UnicodeChar = '@';
+
+	for(int i = 0; i < nrOfBites; i++)
+	{
+		xPos = wormPositions[i].X;
+		yPos = (wormPositions[i].Y * cols);
+		activeBoard[yPos + xPos].Char.UnicodeChar = '.';
+	}
+
 }
 
 void PutFoodInActiveBuffer()
@@ -142,7 +159,7 @@ bool MoveInDirection(Direction direction)
 	CopyBoard(emptyBoard, activeBoard);
 
 	// move worm one step in the current direction
-	SetWormPosition(direction);
+	SetWormHeadPosition(direction);
 
 	if(FoodDetection())
 	{
@@ -186,8 +203,8 @@ void GameOn()
 {
 	CreateBoard(emptyBoard);
 
-	wormPosition.X = cols/2;
-	wormPosition.Y = rows/2;
+	wormHeadPosition.X = cols/2;
+	wormHeadPosition.Y = rows/2;
 
 	GenerateFoodPosition();
 
@@ -230,7 +247,7 @@ bool GameOver(void)
 	CopyBoard(emptyBoard, activeBoard);
 
 	std::wstring score(L"Score: ");
-	score = std::to_wstring(nrOfBites);
+	score += std::to_wstring(nrOfBites);
 
 	WriteTextMessageToBuffer(std::wstring(L"GAME OVER"), 2);
 	WriteTextMessageToBuffer(score, 0);
@@ -281,6 +298,7 @@ void main(void)
 		// CHAR_INFO gameBoard[2000]; // [20][80]; 
 		emptyBoard = new CHAR_INFO[rows * cols];
 		activeBoard = new CHAR_INFO[rows * cols];
+		wormPositions = new COORD[rows * cols];
 
 		GameOn();
 
@@ -288,5 +306,6 @@ void main(void)
 
 		delete [] emptyBoard;
 		delete [] activeBoard;
+		delete [] wormPositions;
 	}
 }
