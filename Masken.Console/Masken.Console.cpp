@@ -20,6 +20,7 @@ PCHAR_INFO emptyBoard, activeBoard;
 short rows, cols;
 COORD wormPosition;
 COORD foodPosition;
+int nrOfBites;
 
 void CreateBoard(PCHAR_INFO board)
 {
@@ -117,8 +118,8 @@ bool FoodDetection(void)
 
 void GenerateFoodPosition(void)
 {
-	foodPosition.X = 1 + rand() % (cols-1);
-	foodPosition.Y = 1 + rand() % (rows-1);
+	foodPosition.X = 1 + rand() % (cols-2);
+	foodPosition.Y = 1 + rand() % (rows-2);
 }
 
 void PutWormInActiveBuffer()
@@ -127,7 +128,6 @@ void PutWormInActiveBuffer()
 	int xPos = wormPosition.X;
 	activeBoard[yPos + xPos].Char.UnicodeChar = '@';
 }
-
 
 void PutFoodInActiveBuffer()
 {
@@ -146,6 +146,7 @@ bool MoveInDirection(Direction direction)
 
 	if(FoodDetection())
 	{
+		nrOfBites++;
 		GenerateFoodPosition();
 	}
 
@@ -190,6 +191,8 @@ void GameOn()
 
 	GenerateFoodPosition();
 
+	nrOfBites = 0;
+
 	BOOL result = SetConsoleActiveScreenBuffer(FrontBuffer);
 
 	int keyChar;
@@ -226,8 +229,12 @@ bool GameOver(void)
 {
 	CopyBoard(emptyBoard, activeBoard);
 
+	std::wstring score(L"Score: ");
+	score = std::to_wstring(nrOfBites);
+
 	WriteTextMessageToBuffer(std::wstring(L"GAME OVER"), 2);
-	WriteTextMessageToBuffer(std::wstring(L"Play again? (y/n)"), 0);
+	WriteTextMessageToBuffer(score, 0);
+	WriteTextMessageToBuffer(std::wstring(L"Play again? (y/n)"), -2);
 
 	WriteFrame(activeBoard);
 	BOOL result = SetConsoleActiveScreenBuffer(FrontBuffer);
