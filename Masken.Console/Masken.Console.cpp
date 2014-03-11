@@ -19,6 +19,7 @@ HANDLE FrontBuffer, BackBuffer;
 PCHAR_INFO emptyBoard, activeBoard;
 short rows, cols;
 COORD wormPosition;
+COORD foodPosition;
 
 void CreateBoard(PCHAR_INFO board)
 {
@@ -109,6 +110,17 @@ bool CollisionDetection(void)
 	return false;
 }
 
+bool FoodDetection(void)
+{
+	return (wormPosition.X == foodPosition.X && wormPosition.Y == foodPosition.Y);
+}
+
+void GenerateFoodPosition(void)
+{
+	foodPosition.X = 1 + rand() % (cols-1);
+	foodPosition.Y = 1 + rand() % (rows-1);
+}
+
 void PutWormInActiveBuffer()
 {
 	int yPos = (wormPosition.Y * cols);
@@ -116,20 +128,33 @@ void PutWormInActiveBuffer()
 	activeBoard[yPos + xPos].Char.UnicodeChar = '@';
 }
 
+
+void PutFoodInActiveBuffer()
+{
+	int yPos = (foodPosition.Y * cols);
+	int xPos = foodPosition.X;
+	activeBoard[yPos + xPos].Char.UnicodeChar = '*';
+}
+
 bool MoveInDirection(Direction direction)
 {
-	// put gameBoard in buffer
+	// put empty board in buffer
 	CopyBoard(emptyBoard, activeBoard);
 
-	// move worm one step in direction
+	// move worm one step in the current direction
 	SetWormPosition(direction);
-	if(CollisionDetection())
+
+	if(FoodDetection())
 	{
-		return false;
+		GenerateFoodPosition();
 	}
 
-	// put worm in buffer
+	if(CollisionDetection())
+		return false;
+
 	PutWormInActiveBuffer();
+
+	PutFoodInActiveBuffer();
 
 	// print buffer
 	WriteFrame(activeBoard);
@@ -162,6 +187,8 @@ void GameOn()
 
 	wormPosition.X = cols/2;
 	wormPosition.Y = rows/2;
+
+	GenerateFoodPosition();
 
 	BOOL result = SetConsoleActiveScreenBuffer(FrontBuffer);
 
