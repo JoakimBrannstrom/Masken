@@ -90,17 +90,30 @@ void SetWormPosition(Direction direction)
 		wormPosition.Y++;
 	if(direction == Up)
 		wormPosition.Y--;
+}
 
-	if(wormPosition.X >= cols-1)
-		wormPosition.X == cols/2;
+bool CollisionDetection(void)
+{
+	bool outOfBounds = wormPosition.X <= 0 
+					|| wormPosition.X >= cols -1
+					|| wormPosition.Y <= 0
+					|| wormPosition.Y >= rows - 1;
 
-	if(wormPosition.Y >= rows-1)
-		wormPosition.Y == rows/2;
+	if(outOfBounds)
+	{
+		wormPosition.X = cols/2;
+		wormPosition.Y = rows/2;
+		return true;
+	}
+
+	return false;
 }
 
 void PutWormInActiveBuffer()
 {
-	activeBoard[(wormPosition.Y * cols) + wormPosition.X].Char.UnicodeChar = '@';
+	int yPos = (wormPosition.Y * cols);
+	int xPos = wormPosition.X;
+	activeBoard[yPos + xPos].Char.UnicodeChar = '@';
 }
 
 void MoveInDirection(Direction direction)
@@ -110,6 +123,10 @@ void MoveInDirection(Direction direction)
 
 	// move worm one step in direction
 	SetWormPosition(direction);
+	if(CollisionDetection())
+	{
+		int test = 1;
+	}
 
 	// put worm in buffer
 	PutWormInActiveBuffer();
