@@ -11,6 +11,8 @@
 
 using namespace std;
 
+enum Direction { None, Up, Right, Down, Left };
+
 CONSOLE_SCREEN_BUFFER_INFO csbi;
 HANDLE hStdOutput;
 BOOL bUsePause;
@@ -22,36 +24,6 @@ COORD foodPosition;
 COORD wormHeadPosition;
 COORD *wormPositions;
 int nrOfBites;
-
-void CreateBoard(PCHAR_INFO board)
-{
-	for(int i = 0; i < cols; i++)
-		board[i].Char.UnicodeChar = '#';
-
-	for(int row = 1; row < rows; row++)
-		for(int col = 0; col < cols; col++)
-		{
-			if(col == 0 || col == cols-1)
-				board[row*cols+col].Char.UnicodeChar = '#';
-			else
-				board[row*cols+col].Char.UnicodeChar = ' ';
-		}
-
-	for(int i = (cols*(rows-1)); i < (cols*rows); i++)
-		board[i].Char.UnicodeChar = '#';
-
-	for(int i = 0; i < (cols*rows); i++)
-		board[i].Attributes = 7;
-}
-
-void CopyBoard(PCHAR_INFO source, PCHAR_INFO target)
-{
-	for(int i = 0; i < (cols*rows); i++)
-	{
-		target[i].Attributes = source[i].Attributes;
-		target[i].Char.UnicodeChar = source[i].Char.UnicodeChar;
-	}
-}
 
 void WriteFrame(PCHAR_INFO board)
 {
@@ -70,7 +42,7 @@ void WriteFrame(PCHAR_INFO board)
 	BOOL result = WriteConsoleOutput(FrontBuffer,		// screen buffer to write to 
 									board,				// buffer to copy from 
 									boardSize,			// col-row size of chiBuffer 
-									boardPosition,		// top left src cell in chiBuffer 
+									boardPosition,		// top left src cell in the buffer 
 									&srctWriteRect);	// dest. screen buffer rectangle 
 }
 
@@ -79,58 +51,6 @@ void SwitchBuffers(void)
 	HANDLE temp = FrontBuffer;
 	FrontBuffer = BackBuffer;
 	BackBuffer = temp;
-}
-
-enum Direction { None, Up, Right, Down, Left };
-
-void SetWormHeadPosition(Direction direction)
-{
-	for(int i = nrOfBites; i > 0; i--)
-	{
-		wormPositions[i].X = wormPositions[i-1].X;
-		wormPositions[i].Y = wormPositions[i-1].Y;
-	}
-	wormPositions[0].X = wormHeadPosition.X;
-	wormPositions[0].Y = wormHeadPosition.Y;
-
-	if(direction == Right)
-		wormHeadPosition.X++;
-	if(direction == Left)
-		wormHeadPosition.X--;
-	if(direction == Down)
-		wormHeadPosition.Y++;
-	if(direction == Up)
-		wormHeadPosition.Y--;
-}
-
-bool CollisionDetection(void)
-{
-	bool outOfBounds = wormHeadPosition.X <= 0 
-					|| wormHeadPosition.X >= cols -1
-					|| wormHeadPosition.Y <= 0
-					|| wormHeadPosition.Y >= rows - 1;
-
-	int xPos , yPos;
-	for(int i = 0; i < nrOfBites; i++)
-	{
-		xPos = wormPositions[i].X;
-		yPos = wormPositions[i].Y;
-		if(wormHeadPosition.X == xPos && wormHeadPosition.Y == yPos)
-			outOfBounds = true;
-	}
-
-	return outOfBounds;
-}
-
-bool FoodDetection(void)
-{
-	return (wormHeadPosition.X == foodPosition.X && wormHeadPosition.Y == foodPosition.Y);
-}
-
-void GenerateFoodPosition(void)
-{
-	foodPosition.X = 1 + rand() % (cols-2);
-	foodPosition.Y = 1 + rand() % (rows-2);
 }
 
 void PutWormInActiveBuffer()
@@ -154,13 +74,89 @@ void PutFoodInActiveBuffer()
 	activeBoard[yPos + xPos].Char.UnicodeChar = '*';
 }
 
+void SetWormPosition(Direction direction)
+{
+	for(int i = nrOfBites; i > 0; i--)
+	{
+		wormPositions[i].X = wormPositions[i-1].X;
+		wormPositions[i].Y = wormPositions[i-1].Y;
+	}
+	wormPositions[0].X = wormHeadPosition.X;
+	wormPositions[0].Y = wormHeadPosition.Y;
+
+	if(direction == Right)
+		wormHeadPosition.X++;
+	if(direction == Left)
+		wormHeadPosition.X--;
+	if(direction == Down)
+		wormHeadPosition.Y++;
+	if(direction == Up)
+		wormHeadPosition.Y--;
+}
+
+bool CollisionDetection(void)
+{
+	bool outOfBounds = wormHeadPosition.X <= 0 
+					|| wormHeadPosition.X >= cols - 1
+					|| wormHeadPosition.Y <= 0
+					|| wormHeadPosition.Y >= rows - 1;
+
+	int xPos, yPos;
+	for(int i = 0; i < nrOfBites; i++)
+	{
+		xPos = wormPositions[i].X;
+		yPos = wormPositions[i].Y;
+		if(wormHeadPosition.X == xPos && wormHeadPosition.Y == yPos)
+			outOfBounds = true;
+	}
+
+	return outOfBounds;
+}
+
+bool FoodDetection(void)
+{
+	return (wormHeadPosition.X == foodPosition.X && wormHeadPosition.Y == foodPosition.Y);
+}
+
+void GenerateFoodPosition(void)
+{
+	foodPosition.X = 1 + rand() % (cols-2);
+	foodPosition.Y = 1 + rand() % (rows-2);
+}
+
+void CreateBoard(PCHAR_INFO board)
+{
+	for(int row = 0; row < rows; row++)
+	{
+		for(int col = 0; col < cols; col++)
+		{
+			if(row == 0 || row == rows-1 || col == 0 || col == cols-1)
+				board[row*cols+col].Char.UnicodeChar = '#';	// wall
+			else
+				board[row*cols+col].Char.UnicodeChar = ' ';
+		}
+	}
+
+	for(int i = 0; i < (cols*rows); i++)
+		board[i].Attributes = 7;
+}
+
+void CopyBoard(PCHAR_INFO source, PCHAR_INFO target)
+{
+	for(int i = 0; i < (cols*rows); i++)
+	{
+		target[i].Attributes = source[i].Attributes;
+		target[i].Char.UnicodeChar = source[i].Char.UnicodeChar;
+	}
+}
+
 bool MoveInDirection(Direction direction)
 {
 	// put empty board in buffer
 	CopyBoard(emptyBoard, activeBoard);
 
 	// move worm one step in the current direction
-	SetWormHeadPosition(direction);
+	SetWormPosition(direction);
 
 	if(FoodDetection())
 	{
@@ -188,20 +184,20 @@ Direction GetDirection(int keyChar, Direction currentValue)
 	switch(keyChar)
 	{
 		case 72:
-//			if(currentValue == Down)
-	//			return currentValue;
+			if(currentValue == Down)
+				return currentValue;
 			return Up;
 		case 77:
-//			if(currentValue == Left)
-	//			return currentValue;
+			if(currentValue == Left)
+				return currentValue;
 			return Right;
 		case 80:
-//			if(currentValue == Up)
-	//			return currentValue;
+			if(currentValue == Up)
+				return currentValue;
 			return Down;
 		case 75:
-//			if(currentValue == Right)
-	//			return currentValue;
+			if(currentValue == Right)
+				return currentValue;
 			return Left;
 		default:
 			return currentValue;
@@ -264,10 +260,6 @@ bool GameOver(void)
 
 	WriteFrame(activeBoard);
 	BOOL result = SetConsoleActiveScreenBuffer(FrontBuffer);
-
-	// WriteFrame(activeBoard);
-	// SwitchBuffers();
-
 
 	while(1)
 	{
