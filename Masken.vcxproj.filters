@@ -21,6 +21,9 @@
     <ClInclude Include="Visual Micro\.Masken.vsarduino.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="font.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Algorithm.txt" />

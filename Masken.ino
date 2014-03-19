@@ -1,55 +1,111 @@
+#include "font.h";
 
-#define Up		1
-#define Right	2
-#define Down	3
-#define Left	4
+#define RST 12
+#define CE 11
+#define DC 10
+#define DIN 9
+#define CLK 8
 
-int pinUp	= 1;
-int pinRight= 2;
-int pinDown	= 3;
-int pinLeft	= 4;
-
-int Direction;
-
-int GetUserDirection();
+#define LCD_COMMAND	LOW
+#define LCD_DATA	HIGH
 
 void setup()
 {
-	Direction = Right;
+	pinMode(RST, OUTPUT);
+	pinMode(CE, OUTPUT);
+	pinMode(DC, OUTPUT);
+	pinMode(DIN, OUTPUT);
+	pinMode(CLK, OUTPUT);
 
-	// Clear display
+	digitalWrite(RST, LOW);
+	digitalWrite(RST, HIGH);
 
-	// Set start position (top left)
+	LcdWriteCommand(0x21); // LCD extended commands
+	LcdWriteCommand(0xB8); // set LCD Vop (contrast)
+	// LcdWriteCommand(0xB4); // set LCD Vop (contrast)
+	LcdWriteCommand(0x04); // set temp coefficent
+	LcdWriteCommand(0x14); // LCD bias mode 1:40
+	LcdWriteCommand(0x20); // LCD basic commands
+	// LcdWriteCommand(0x09); // LCD all segments on
+	LcdWriteCommand(0x0C); // LCD normal video
 
-	// Randomly put food on game board
+	int nrOfPixels = 84 * 48; // x * y
+	int nrOfCharacterPositions = nrOfPixels / 8; // 84 * 48 / 8 = 84 * 6 = 504
+	for(int i = 0; i < 504; i++)
+		LcdWriteData(0x00); // clear LCD
+
+	// LcdXY(20,2);
+	// LcdWriteString("THE END");
+	drawFrame();
 }
 
 void loop()
 {
-	int newDirection = GetUserDirection();
 }
 
-int GetUserDirection()
+void drawFrame(void)
 {
-	if(digitalRead(pinUp))
-		return Up;
+	unsigned char  j;
 
-	if(digitalRead(pinRight))
-		return Right;
+	for(j = 0; j < 84; j++) // Top
+	{
+		LcdXY(j, 0);
+		LcdWrite(1, 0x01);
+	}
 
-	if(digitalRead(pinDown))
-		return Down;
+	for(j = 0; j < 84; j++) // Bottom
+	{
+		LcdXY(j, 5);
+		LcdWrite(1, 0x80);
+	}
 
-	if(digitalRead(pinLeft))
-		return Left;
+	for(j = 0; j < 6; j++) // Right
+	{
+		LcdXY(83, j);
+		LcdWrite(1, 0xff);
+	}
 
-	return 0;
+	for(j = 0; j < 6; j++) // Left
+	{
+		LcdXY(0, j);
+		LcdWrite(1, 0xff);
+	}
 }
 
-void PrintBoard()
+void LcdWriteString(char *characters)
 {
+	while(*characters)
+		LcdWriteCharacter(*characters++);
 }
 
-void PutFoodOnGameBoard()
+void LcdWriteCharacter(char character)
 {
+	for(int i=0; i<5; i++)
+		LcdWriteData(ASCII[character - 0x20][i]);
+
+	LcdWriteData(0x00);
+}
+
+void LcdWriteData(byte data)
+{
+	LcdWrite(LCD_DATA, data);
+}
+
+void LcdWriteCommand(byte command)
+{
+	LcdWrite(LCD_COMMAND, command);
+}
+
+void LcdWrite(byte dc, byte value)
+{
+	digitalWrite(DC, dc); // DC pin is low for commands
+	digitalWrite(CE, LOW);
+	shiftOut(DIN, CLK, MSBFIRST, value); // Transmit serial data
+	digitalWrite(CE, HIGH);
+}
+
+void LcdXY(int x, int y)
+{
+	LcdWriteCommand(0x80 | x);  // Column.
+	LcdWriteCommand(0x40 | y);  // Row.
 }
