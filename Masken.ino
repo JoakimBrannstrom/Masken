@@ -1,111 +1,260 @@
-#include "font.h";
+#include "types.h";
+#include "PhilipsPCD8544.h";
 
-#define RST 12
-#define CE 11
-#define DC 10
-#define DIN 9
-#define CLK 8
+short rows, cols;
+bool gameOver = false;
 
-#define LCD_COMMAND	LOW
-#define LCD_DATA	HIGH
+COORD foodPosition, wormHeadPosition;
+COORD wormPositions[504];
+int nrOfBites;
+Direction d;
 
 void setup()
 {
-	pinMode(RST, OUTPUT);
-	pinMode(CE, OUTPUT);
-	pinMode(DC, OUTPUT);
-	pinMode(DIN, OUTPUT);
-	pinMode(CLK, OUTPUT);
+	rows = getDisplayHeight();
+	cols = getDisplayWidth();
 
-	digitalWrite(RST, LOW);
-	digitalWrite(RST, HIGH);
+	//char* gameBoard = new char[rows * cols];
+	// CHAR_INFO gameBoard[2000]; // [20][80];
+	/*
+	emptyBoard = new bool[rows * cols];
+	activeBoard = new bool[rows * cols];
+	wormPositions = new COORD[rows * cols];
+	*/
 
-	LcdWriteCommand(0x21); // LCD extended commands
-	LcdWriteCommand(0xB8); // set LCD Vop (contrast)
-	// LcdWriteCommand(0xB4); // set LCD Vop (contrast)
-	LcdWriteCommand(0x04); // set temp coefficent
-	LcdWriteCommand(0x14); // LCD bias mode 1:40
-	LcdWriteCommand(0x20); // LCD basic commands
-	// LcdWriteCommand(0x09); // LCD all segments on
-	LcdWriteCommand(0x0C); // LCD normal video
+	//LcdXY(20,2);
+	//LcdWriteString("THE END!");
+	//drawFrame();
 
-	int nrOfPixels = 84 * 48; // x * y
-	int nrOfCharacterPositions = nrOfPixels / 8; // 84 * 48 / 8 = 84 * 6 = 504
-	for(int i = 0; i < 504; i++)
-		LcdWriteData(0x00); // clear LCD
+	InitializeLcd();
 
-	// LcdXY(20,2);
-	// LcdWriteString("THE END");
-	drawFrame();
+	//LcdXY(4, 2);
+	//LcdWriteString("Starting...");
+
+	InitializeGame();
 }
 
 void loop()
 {
+/*
+	if(replay)
+	{
+		GameOn();
+
+		//GameOver();
+	}
+	*/
+	if(gameOver || !MoveInDirection(d))
+	{
+		gameOver = true;
+		GameOver();
+	}
+		
+	delay(200);
 }
 
-void drawFrame(void)
+void InitializeGame()
 {
-	unsigned char  j;
+	WriteEmptyBoard();
 
-	for(j = 0; j < 84; j++) // Top
+	wormHeadPosition.X = cols/2;
+	wormHeadPosition.Y = rows/8/2-1;
+
+	GenerateFoodPosition();
+
+	nrOfBites = 5;
+
+	d = Right;
+}
+
+void GameOn()
+{
+	while(1)
 	{
-		LcdXY(j, 0);
-		LcdWrite(1, 0x01);
+		/*
+		if(_kbhit())
+		{
+			keyChar = _getch();
+			d = GetDirection(keyChar, d);
+		}
+		*/
+		if(!MoveInDirection(d))
+		{
+			break;
+		}
+		
+		delay(100);
 	}
-
-	for(j = 0; j < 84; j++) // Bottom
+}
+/*
+void CreateBoard(bool *board)
+{
+	for(int row = 0; row < rows; row++)
 	{
-		LcdXY(j, 5);
-		LcdWrite(1, 0x80);
+		for(int col = 0; col < cols; col++)
+		{
+			if(row == 0 || row == rows-1 || col == 0 || col == cols-1)
+				board[row*cols+col] = true;	// wall
+			else
+				board[row*cols+col] = false;
+		}
 	}
+}
+*/
 
-	for(j = 0; j < 6; j++) // Right
-	{
-		LcdXY(83, j);
-		LcdWrite(1, 0xff);
-	}
+void WriteEmptyBoard()
+{
+	drawFrame();
+}
 
-	for(j = 0; j < 6; j++) // Left
+void GenerateFoodPosition(void)
+{
+	foodPosition.X = 1 + rand() % (cols-2);
+	foodPosition.Y = 1 + rand() % (rows-2);
+}
+
+Direction GetDirection(int keyChar, Direction currentValue)
+{
+	switch(keyChar)
 	{
-		LcdXY(0, j);
-		LcdWrite(1, 0xff);
+		case 72:
+			if(currentValue == Down)
+				return currentValue;
+			return Up;
+		case 77:
+			if(currentValue == Left)
+				return currentValue;
+			return Right;
+		case 80:
+			if(currentValue == Up)
+				return currentValue;
+			return Down;
+		case 75:
+			if(currentValue == Right)
+				return currentValue;
+			return Left;
+		default:
+			return currentValue;
 	}
 }
 
-void LcdWriteString(char *characters)
+bool MoveInDirection(Direction direction)
 {
-	while(*characters)
-		LcdWriteCharacter(*characters++);
+	// move worm one step in the current direction
+	COORD previousPosition = SetWormHeadPosition(direction);
+
+	if(FoodDetection())
+	{
+		nrOfBites++;
+		GenerateFoodPosition();
+		PutFoodInActiveBuffer();
+	}
+	else
+		SetWormTailPosition(previousPosition);
+
+	if(CollisionDetection())
+		return false;
+
+	return true;
 }
 
-void LcdWriteCharacter(char character)
+void CopyBoard(bool *source, bool *target)
 {
-	for(int i=0; i<5; i++)
-		LcdWriteData(ASCII[character - 0x20][i]);
+	for(int i = 0; i < (cols*rows); i++)
+	{
+		target[i] = source[i];
+	}
+}
 
+COORD SetWormHeadPosition(Direction direction)
+{
+	COORD previousPosition;
+	previousPosition.X = wormHeadPosition.X;
+	previousPosition.Y = wormHeadPosition.Y;
+
+	if(direction == Right)
+		wormHeadPosition.X++;
+	if(direction == Left)
+		wormHeadPosition.X--;
+	if(direction == Down)
+		wormHeadPosition.Y++;
+	if(direction == Up)
+		wormHeadPosition.Y--;
+
+	int xPos = wormHeadPosition.X;
+	int yPos = wormHeadPosition.Y;
+	LcdXY(xPos, yPos);
+	LcdWriteData(0x01);
+
+	return previousPosition;
+}
+
+void SetWormTailPosition(COORD previousPosition)
+{
+	LcdXY(wormPositions[nrOfBites].X, wormPositions[nrOfBites].Y);
 	LcdWriteData(0x00);
+
+	for(int i = nrOfBites; i > 0; i--)
+	{
+		wormPositions[i].X = wormPositions[i-1].X;
+		wormPositions[i].Y = wormPositions[i-1].Y;
+	}
+	wormPositions[0].X = previousPosition.X;
+	wormPositions[0].Y = previousPosition.Y;
 }
 
-void LcdWriteData(byte data)
+bool FoodDetection(void)
 {
-	LcdWrite(LCD_DATA, data);
+	return (wormHeadPosition.X == foodPosition.X && wormHeadPosition.Y == foodPosition.Y);
 }
 
-void LcdWriteCommand(byte command)
+bool CollisionDetection(void)
 {
-	LcdWrite(LCD_COMMAND, command);
+	bool outOfBounds = wormHeadPosition.X <= 0 
+					|| wormHeadPosition.X >= cols - 1
+					|| wormHeadPosition.Y <= 0
+					|| wormHeadPosition.Y >= rows - 1;
+
+	int xPos, yPos;
+	for(int i = 0; i < nrOfBites; i++)
+	{
+		xPos = wormPositions[i].X;
+		yPos = wormPositions[i].Y;
+		if(wormHeadPosition.X == xPos && wormHeadPosition.Y == yPos)
+			outOfBounds = true;
+	}
+
+	return outOfBounds;
 }
 
-void LcdWrite(byte dc, byte value)
+void PutFoodInActiveBuffer()
 {
-	digitalWrite(DC, dc); // DC pin is low for commands
-	digitalWrite(CE, LOW);
-	shiftOut(DIN, CLK, MSBFIRST, value); // Transmit serial data
-	digitalWrite(CE, HIGH);
+//	int yPos = (foodPosition.Y * cols);
+	//int xPos = foodPosition.X;
+	//activeBoard[yPos + xPos] = true;
+
+	int xPos = foodPosition.X;
+	int yPos = foodPosition.Y;
+	LcdXY(xPos, yPos);
+	LcdWriteData(0x03);
+	LcdXY(xPos+1, yPos);
+	LcdWriteData(0x03);
 }
 
-void LcdXY(int x, int y)
+void WriteFrame(bool *board)
 {
-	LcdWriteCommand(0x80 | x);  // Column.
-	LcdWriteCommand(0x40 | y);  // Row.
+	RawWriteDisplay(board);
+}
+
+void GameOver(void)
+{
+	clearDisplay();
+
+	LcdXY(16, 1);
+	LcdWriteString("GAME OVER");
+
+	LcdXY(16, 3);
+	char score[15];
+	sprintf(score, "Score: %d", nrOfBites);
+	LcdWriteString(score);
 }
