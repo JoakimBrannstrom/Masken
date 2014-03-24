@@ -1,10 +1,9 @@
-#include "font.h";
 #include "PhilipsPCD8544.h";
 
 #define LCD_COMMAND	LOW
 #define LCD_DATA	HIGH
 
-void InitializeLcd()
+void initializeLcd()
 {
 	pinMode(RST, OUTPUT);
 	pinMode(CE, OUTPUT);
@@ -27,35 +26,23 @@ void InitializeLcd()
 	clearDisplay();
 }
 
-short clearDisplay(void)
+void clearDisplay(void)
 {
-	int nrOfPixels = 84 * 48; // x * y
-	int nrOfCharacterPositions = nrOfPixels / 8; // 84 * 48 / 8 = 84 * 6 = 504
-	for(int i = 0; i < 504; i++)
+	for(int i = 0; i < DisplaySizeInBytes; i++)
 		LcdWriteData(0x00); // clear LCD
-}
-
-short getDisplayWidth(void)
-{
-	return 84;
-}
-
-short getDisplayHeight(void)
-{
-	return 48;
 }
 
 void drawFrame(void)
 {
-	unsigned char  j;
+	unsigned char j;
 
-	for(j = 0; j < 84; j++) // Top
+	for(j = 0; j < DisplayWidth; j++) // Top
 	{
 		LcdXY(j, 0);
 		LcdWrite(LCD_DATA, 0x01);
 	}
 
-	for(j = 0; j < 84; j++) // Bottom
+	for(j = 0; j < DisplayWidth; j++) // Bottom
 	{
 		LcdXY(j, 5);
 		LcdWrite(LCD_DATA, 0x80);
@@ -74,22 +61,27 @@ void drawFrame(void)
 	}
 }
 
-void RawWriteDisplay(bool *pixelBuffer)
+void drawBlock(short x, short y, short width, short height)
 {
-	short width = getDisplayWidth();
-	short height = getDisplayHeight();
-	int displaySize = width * height;
-	int x, y;
+	short bigX = x / width;
+	short smallX = x % width;
+	const int byteSize = 8;
+	short bigY = y / byteSize;
+	short smallY = y % byteSize;
 
-	for(int i = 0; i < displaySize; i++)
+	LcdXY(bigX * width + smallX, bigY);
+	long data = (0x0001 << height) - 1;
+	long smallData = data << smallY;
+	byte bigData = smallData >> 8;
+	for(int i = smallX; i < smallX + width; i++)
 	{
-		x = i % width;
-		y = i % height;
-		LcdXY(x, y);
-		if(pixelBuffer[i])
-			LcdWrite(1, 0x01);
-		else
-			LcdWrite(0, 0x01);
+		LcdWriteData(smallData);
+	}
+
+	LcdXY(bigX * width + smallX, bigY + 1);
+	for(int i = smallX; i < smallX + width; i++)
+	{
+		LcdWriteData(bigData);
 	}
 }
 
@@ -101,7 +93,8 @@ void LcdWriteString(char *characters)
 
 void LcdWriteCharacter(char character)
 {
-	for(int i=0; i<5; i++)
+	int i;
+	for(i = 0; i < 5; i++)
 		LcdWriteData(ASCII[character - 0x20][i]);
 
 	LcdWriteData(0x00);
