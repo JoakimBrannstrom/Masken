@@ -15,8 +15,9 @@ void initializeLcd()
 	digitalWrite(RST, HIGH);
 
 	LcdWriteCommand(0x21); // LCD extended commands
-	LcdWriteCommand(0xB8); // set LCD Vop (contrast)
+	// LcdWriteCommand(0xB8); // set LCD Vop (contrast)
 	// LcdWriteCommand(0xB4); // set LCD Vop (contrast)
+	LcdWriteCommand(0xB0); // set LCD Vop (contrast)
 	LcdWriteCommand(0x04); // set temp coefficent
 	LcdWriteCommand(0x14); // LCD bias mode 1:40
 	LcdWriteCommand(0x20); // LCD basic commands

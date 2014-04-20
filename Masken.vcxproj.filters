@@ -16,7 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Masken.ino" />
-    <None Include="PhilipsPCD8544.ino" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Visual Micro\.Masken.vsarduino.h">
@@ -31,8 +30,19 @@
     <ClInclude Include="Types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Algorithm.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="PhilipsPCD8544.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
